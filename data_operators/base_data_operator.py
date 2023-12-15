@@ -1,7 +1,10 @@
 from abc import ABC, abstractmethod
+from pydantic import BaseModel, Field, field_validator
+from typing import Literal
+from datetime import datetime
+import re
 import os
 import pandas as pd
-
 
 
 class BaseDataOperator(ABC):
@@ -27,16 +30,30 @@ class BaseDataOperator(ABC):
     def commit_to_file(self) -> None:
         pass
 
-    @classmethod
-    def write_data_into_json(cls, data: pd.DataFrame, file_path: str) -> None:
-        pass
 
-    @classmethod
-    def write_data_into_csv(cls, data: pd.DataFrame, file_path: str) -> None:
-        pass
+class BaseFileInfo(BaseModel):
+    file_name: str
+    file_extension: Literal["csv", "json"]
+    file_size: float = 0
+    date_created: datetime = Field(default_factory=lambda: datetime.now().strftime('%Y-%m-%d %H:%M:%S'))
 
-    def delete_file(self):
-        pass
+    @field_validator("file_name")
+    def validate_name(cls, value: str):
+        if not value:
+            raise ValueError("name not valid")
+        return cls._clean_file_name(value)
+
+    @field_validator("file_extension")
+    def valid_file_extension(cls, value: str):
+        if not value or value not in ["csv", "json"]:
+            raise ValueError("not valid file extension")
+        return value
+
+    @staticmethod
+    def _clean_file_name(file_name: str) -> str:
+        # in case file name contains any illegal characters
+        cleaned_file_name = re.sub(r'[^\w.-]', '', file_name)
+        return cleaned_file_name
 
 
 

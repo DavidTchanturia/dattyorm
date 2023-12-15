@@ -30,15 +30,18 @@ class CSVDataOperator(BaseDataOperator):
             create_data_file(self.file_path)
             self.df = pd.DataFrame()
         finally:
-            self._update_file_metadata() # get theaders and types
+            self._update_file_metadata()  # get theaders and types
 
     def insert_data(self, data: dict) -> None:
         """gets data as a dict, converts to dataframe and concatenates to existing df"""
-        new_data = pd.DataFrame([data])
-        if self.df.empty:
-            self.df = new_data
-        else:
-            self.df = pd.concat((self.df, new_data), ignore_index=True)
+        try:
+            new_data = pd.DataFrame([data])
+            if self.df.empty:
+                self.df = new_data
+            else:
+                self.df = pd.concat((self.df, new_data), ignore_index=True)
+        finally:
+            self._update_file_metadata() # if data is inserted in an empty file get the metadata
 
     def update_data(self, index, **kwargs) -> None:
         # TODO: validate the column types being updated
@@ -52,7 +55,7 @@ class CSVDataOperator(BaseDataOperator):
 
     def commit_to_file(self) -> None:
         """saves modified self.df to to the file"""
-        self.df.to_csv(self.file_path)
+        self.df.to_csv(self.file_path, index=False)
 
     def write_data_into_json(self, path_to_json_location):
         """convert dataframe to json and save to json
@@ -82,17 +85,3 @@ class CSVDataOperator(BaseDataOperator):
         self.file_metadata.headers_and_types = self._df_headers_types()
 
 
-person = {
-    "name": "kako",
-    "last_name": "kak",
-    "age": 23,
-    "sex": "male"
-}
-
-obj = CSVDataOperator("/home/user/Sweeft/Projects/datty_orm/test_files/names.csv")
-
-
-obj.get_data()
-print(obj.df)
-
-obj.write_data_into_json("/home/user/Sweeft/Projects/datty_orm/test_files/name*s.json")

@@ -1,5 +1,6 @@
 from data_operators.base_data_operator import BaseDataOperator
 import pandas as pd
+from utils.helpers import create_data_file, validate_file_path
 
 
 class CSVDataOperator(BaseDataOperator):
@@ -9,7 +10,13 @@ class CSVDataOperator(BaseDataOperator):
 
     def get_data(self):
         """simply read data from csv file"""
-        self.df = pd.read_csv(self.file_path)
+        try:
+            self.df = pd.read_csv(self.file_path)
+        except FileNotFoundError:
+            print("file at given path does not exist, creating new one")
+            self.file_path = validate_file_path(self.file_path)  # to update new file path if name validated
+            create_data_file(self.file_path)
+            self.df = pd.DataFrame()
 
     def insert_data(self, data: dict) -> None:
         """gets data as a dict, converts to dataframe and concatenates to existing df"""
@@ -38,12 +45,3 @@ person = {
     "age": 23,
     "sex": "male"
 }
-
-
-obj = CSVDataOperator("/home/user/Sweeft/Projects/datty_orm/test_files/names.csv")
-obj.get_data()
-print(obj.df)
-
-obj.insert_data(person)
-print(obj.df)
-

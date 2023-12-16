@@ -8,7 +8,10 @@ import pandas as pd
 
 
 class BaseDataOperator(ABC):
-    CURRENT_WORKING_DIRECTORY = os.getcwd()
+    def __init__(self, file_path):
+        self.file_path = file_path
+        self.df = pd.DataFrame()
+        self.file_metadata = None
 
     @abstractmethod
     def get_data(self):

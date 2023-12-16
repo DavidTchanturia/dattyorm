@@ -1,10 +1,7 @@
 from abc import ABC, abstractmethod
-from pydantic import BaseModel, Field, field_validator
-from typing import Literal, Dict
-from datetime import datetime
-import re
-import os
+from utils.helpers import parse_file_path, get_metadata
 import pandas as pd
+from data_operators.base_file_info_validation import BaseFileInfo
 
 
 class BaseDataOperator(ABC):
@@ -33,38 +30,25 @@ class BaseDataOperator(ABC):
     def commit_to_file(self) -> None:
         pass
 
+    def _df_headers_types(self):
+        """to get headers and types of the dataframe"""
+        if self.df.empty:
+            return {}
 
-class BaseFileInfo(BaseModel):
-    file_name: str
-    file_extension: Literal["csv", "json"]
-    file_size: float = 0
-    date_created: datetime = Field(default_factory=lambda: datetime.now().strftime('%Y-%m-%d %H:%M:%S'))
-    headers_and_types: Dict[str, str] = {} # if file is not empty, will contain column/types, key/types
+        columns = self.df.columns
+        types = self.df.dtypes
+        headers_and_types = {column: str(dtype) for column, dtype in zip(columns, types)}
+        return headers_and_types
 
-    @field_validator("file_name")
-    def validate_name(cls, value: str):
-        """validates name agains illegal characters, if there are some, cleans them
-        tes&t_fil*e -> test_file
-        """
-        if not value:
-            raise ValueError("name not valid")
-        return cls._clean_file_name(value)
+    def _update_file_metadata(self) -> None:
+        """assign the actual metadata to self.df
 
-    @field_validator("file_extension")
-    def valid_file_extension(cls, value: str):
-        """if the extension is not csv or json, raises error
-
-        cant be forced to validate"""
-        if not value or value not in ["csv", "json"]:
-            raise ValueError("not valid file extension")
-        return value
-
-    @staticmethod
-    def _clean_file_name(file_name: str) -> str:
-        # in case file name contains any illegal characters replace them with ""
-        cleaned_file_name = re.sub(r'[^\w.-]', '', file_name)
-        return cleaned_file_name
-
+        will be called after the initial creation of the file"""
+        # since the first variable is directory path, no need for it
+        _, file_name, file_extension = parse_file_path(self.file_path)
+        file_info = get_metadata(self.file_path)
+        self.file_metadata = BaseFileInfo(file_name=file_name, file_extension=file_extension, **file_info)
+        self.file_metadata.headers_and_types = self._df_headers_types()
 
 
 

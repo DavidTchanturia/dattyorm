@@ -1,7 +1,7 @@
 import os
-from data_operators.base_data_operator import BaseDataOperator, BaseFileInfo
+from data_operators.base_data_operator import BaseDataOperator
 import pandas as pd
-from utils.helpers import create_data_file, validate_file_path, parse_file_path, get_metadata
+from utils.helpers import create_data_file, validate_file_path
 
 
 class CSVDataOperator(BaseDataOperator):
@@ -66,25 +66,5 @@ class CSVDataOperator(BaseDataOperator):
         if json does not exist, create with validating the name"""
         validated_json_path = validate_file_path(path_to_json_location)
         self.df.to_json(validated_json_path, index=False, orient='records', indent=4, force_ascii=False)
-
-    def _df_headers_types(self):
-        """to get headers and types of the dataframe"""
-        if self.df.empty:
-            return {}
-
-        columns = self.df.columns
-        types = self.df.dtypes
-        headers_and_types = {column: str(dtype) for column, dtype in zip(columns, types)}
-        return headers_and_types
-
-    def _update_file_metadata(self) -> None:
-        """assign the actual metadata to self.df
-
-        will be called after the initial creation of the file"""
-        # since the first variable is directory path, no need for it
-        _, file_name, file_extension = parse_file_path(self.file_path)
-        file_info = get_metadata(self.file_path)
-        self.file_metadata = BaseFileInfo(file_name=file_name, file_extension=file_extension, **file_info)
-        self.file_metadata.headers_and_types = self._df_headers_types()
 
 

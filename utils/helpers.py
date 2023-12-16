@@ -1,6 +1,6 @@
 import os
-from data_operators.base_data_operator import BaseFileInfo
 from datetime import datetime
+from data_operators.base_file_info_validation import BaseFileInfo
 
 def parse_file_path(file_path: str) -> tuple[str, str, str]:
     """given the absolute or relative path of a file, returns its

@@ -5,10 +5,12 @@ from utils.helpers import create_data_file, validate_file_path, parse_file_path,
 
 
 class CSVDataOperator(BaseDataOperator):
-    def __init__(self, file_path):
-        self.file_path = file_path
-        self.df = None
-        self.file_metadata = None
+    CURRENT_WORKING_DIRECTORY = os.getcwd()
+    BACKUP_FILE_PATH = os.path.join(CURRENT_WORKING_DIRECTORY, "this_is_a_backup_file.csv")
+
+    # instantiate BaseDataOperator and have a backup file path if one is not provided
+    def __init__(self, file_path=BACKUP_FILE_PATH):
+        super().__init__(file_path=file_path)
 
     def get_data(self):
         """read the data from csv file assign it to self.df
@@ -28,7 +30,8 @@ class CSVDataOperator(BaseDataOperator):
             print("file at given path does not exist, creating new one")
             self.file_path = validate_file_path(self.file_path)  # to update new file path if name validated
             create_data_file(self.file_path)
-            self.df = pd.DataFrame()
+        except pd.errors.EmptyDataError: # to handle empty files
+            print("no data in the file")
         finally:
             self._update_file_metadata()  # get theaders and types
 
@@ -41,7 +44,7 @@ class CSVDataOperator(BaseDataOperator):
             else:
                 self.df = pd.concat((self.df, new_data), ignore_index=True)
         finally:
-            self._update_file_metadata() # if data is inserted in an empty file get the metadata
+            self._update_file_metadata()  # if data is inserted in an empty file get the metadata
 
     def update_data(self, index, **kwargs) -> None:
         # TODO: validate the column types being updated

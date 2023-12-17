@@ -2,8 +2,8 @@ import psycopg2
 
 
 class BaseManagerConnector:
-    def __init__(self, model_class):
-        self.model_class = model_class
+    def __init__(self, model_class_instance):
+        self.model_class = model_class_instance.__class__
         self.connection = None
 
     def set_connection(self, database_settings):
@@ -18,10 +18,15 @@ class BaseManagerConnector:
 
 
 class BaseManager(BaseManagerConnector):
-    def create_table(self, fields):
-        field_names = [f"{field} {data_type}" for field, data_type in fields.items()]
-        fields_format = ", ".join(field_names)
-        query = f"CREATE TABLE IF NOT EXISTS {self.model_class.table_name} ({fields_format})"
+    def create_table(self, model_class):
+        table_name = model_class.table_name
+        fields = [f"{field} {data_type}" for field, data_type in model_class.fields.items() if field != 'table_name']
+
+        # Constructing the CREATE TABLE query
+        field_definitions = ", ".join(fields)
+        query = f"CREATE TABLE IF NOT EXISTS {table_name} ({field_definitions})"
+
+        # Execute the query
         cursor = self._get_cursor()
         cursor.execute(query)
 

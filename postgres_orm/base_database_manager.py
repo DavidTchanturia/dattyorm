@@ -30,7 +30,6 @@ class BaseManager(BaseManagerConnector):
         cursor = self._get_cursor()
         cursor.execute(query)
 
-
     def select(self, *field_names, batch_size=1000):
         if not field_names:
             field_names = ["*"]  # if field names are not specified, select all
@@ -45,8 +44,6 @@ class BaseManager(BaseManagerConnector):
             return rows
         except psycopg2.Error as e:
             print(f"Error: {e}")
-
-
 
     def batch_insert(self, rows: list):
         if not rows:
@@ -63,10 +60,31 @@ class BaseManager(BaseManagerConnector):
         except psycopg2.Error as e:
             print(f"Error: {e}")
 
-    def update(self, new_data: dict):
-        pass
+    def update(self, id, new_data: dict):
+        set_values = ", ".join([f"{key} = %s" for key in new_data.keys()])
 
-    def delete(self):
-        pass
+        # Construct the UPDATE query
+        query = f"UPDATE {self.model_class_name} SET {set_values} WHERE id = %s"  # Replace 'index_column' with the actual column name for indexing
 
+        cursor = self._get_cursor()
 
+        try:
+            values_to_update = list(new_data.values())
+            values_to_update.append(id)
+
+            cursor.execute(query, values_to_update)
+            self.connection.commit()
+            print("Update successful.")
+        except psycopg2.Error as e:
+            print(f"Error: {e}")
+
+    def delete(self, identifier_column_name, column_value):
+        query = f"DELETE FROM {self.model_class_name} WHERE {identifier_column_name} = %s"
+
+        cursor = self._get_cursor()
+        try:
+            cursor.execute(query, (column_value,))
+            self.connection.commit()
+            print("Delete successful.")
+        except psycopg2.Error as e:
+            print(f"Error: {e}")

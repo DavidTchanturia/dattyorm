@@ -19,8 +19,7 @@ class BaseManager(BaseConnectorManager):
         - `model_class_instance`: an instance of class representing the table in the db.
         """
         table_name = self.model_class_name
-        fields = [f"{field} {data_type}" for field, data_type in model_class_instance.fields.items() if field != 'table_name']
-
+        fields = [f"{field} {data_type}" for field, data_type in model_class_instance.fields.items()]
         # construct create table query
         field_definitions = ", ".join(fields)
         query = f"CREATE TABLE IF NOT EXISTS {table_name} ({field_definitions})"

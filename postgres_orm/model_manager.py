@@ -9,4 +9,4 @@ class TableMeta(type):
 
 
 class BaseModel(metaclass=TableMeta):
-    table_name = None
+    pass

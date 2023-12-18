@@ -1,23 +1,9 @@
+import pandas as pd
 import psycopg2
+from base_connector_manager import BaseConnectorManager
 
 
-class BaseManagerConnector:
-    def __init__(self, model_class_instance):
-        self.model_class = model_class_instance.__class__ # since I pass the isntance as an agrument, to get the actual class
-        self.model_class_name = model_class_instance.__class__.__name__  # from  <class '__main__.Employee'> get employee as a table name
-
-    def set_connection(self, database_settings):
-        self.connection = psycopg2.connect(**database_settings)
-        self.connection.autocommit = True
-
-    def _get_cursor(self):
-        return self.connection.cursor()
-
-    def _close_connection(self):
-        self.connection.close()
-
-
-class BaseManager(BaseManagerConnector):
+class BaseManager(BaseConnectorManager):
     def create_table(self, model_class):
         table_name = self.model_class_name
         fields = [f"{field} {data_type}" for field, data_type in model_class.fields.items() if field != 'table_name']
@@ -88,3 +74,38 @@ class BaseManager(BaseManagerConnector):
             print("Delete successful.")
         except psycopg2.Error as e:
             print(f"Error: {e}")
+
+    def export_data_as_csv(self, path_to_csv_file):
+        try:
+            df = self._get_data_for_export()
+            # Export DataFrame to a CSV file
+            df.to_csv(path_to_csv_file, index=False)
+            print(f"Data exported to {path_to_csv_file} successfully.")
+        except psycopg2.Error as e:
+            print(f"Error: {e}")
+
+    def export_data_as_json(self, path_to_json_file):
+        try:
+            df = self._get_data_for_export()
+
+            df.to_json(path_to_json_file, orient="records", indent=4)
+            print(f"data successfully exported to {path_to_json_file}")
+        except psycopg2.Error:
+            print(f"Error while exporting")
+
+    def _get_data_for_export(self):
+        cursor = self._get_cursor()
+        cursor.execute(f"SELECT * FROM {self.model_class_name}")
+        rows = cursor.fetchall()
+
+        if not rows:
+            print("No data to export.")
+            return
+
+        # Get column names from the cursor description
+        columns = [desc[0] for desc in cursor.description]
+
+        # Convert rows to a DataFrame using pandas
+        df = pd.DataFrame(rows, columns=columns)
+
+        return df

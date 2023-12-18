@@ -19,7 +19,7 @@ class BaseDataOperator(ABC):
         pass
 
     @abstractmethod
-    def update_data(self, index, **kwargs) -> None:
+    def update_data(self, identifier_column, identifier_value, **kwargs) -> None:
         pass
 
     @abstractmethod

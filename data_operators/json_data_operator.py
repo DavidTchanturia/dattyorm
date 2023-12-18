@@ -43,11 +43,16 @@ class JsonDataOperator(BaseDataOperator):
         finally:
             self._update_file_metadata()  # if data is inserted in an empty file get the metadata
 
-    def update_data(self, index, **kwargs) -> None:
+    def update_data(self, identifier_column, identifier_value, **kwargs) -> None:
         # TODO: validate the column types being updated
-        """find row with index, and updates those columns that have been passed as a keyword argument"""
-        for key, value in kwargs.items():
-            self.df.at[index, key] = value
+        """Find rows that match the identifier and update columns with kwargs"""
+        matching_rows = self.df[self.df[identifier_column] == identifier_value]
+
+        for index in matching_rows.index:
+            for key, value in kwargs.items():
+                self.df.at[index, key] = value
+
+        self._update_file_metadata()
 
     def delete_data(self, index) -> None:
         """remove data from self.df, original file not affected unitll commiting to it"""

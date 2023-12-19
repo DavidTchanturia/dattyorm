@@ -15,20 +15,36 @@ class BaseDataOperator(ABC):
         pass
 
     @abstractmethod
-    def insert_data(self, data: pd.DataFrame) -> None:
-        pass
-
-    @abstractmethod
-    def update_data(self, identifier_column, identifier_value, **kwargs) -> None:
-        pass
-
-    @abstractmethod
-    def delete_data(self, index) -> None:
-        pass
-
-    @abstractmethod
     def commit_to_file(self) -> None:
         pass
+
+    def insert_data(self, data: dict) -> None:
+        """gets data as a dict, converts to dataframe and concatenates to existing df"""
+        try:
+            new_data = pd.DataFrame([data])
+            if self.df.empty:
+                self.df = new_data
+            else:
+                self.df = pd.concat((self.df, new_data), ignore_index=True)
+        finally:
+            self._update_file_metadata()  # if data is inserted in an empty file get the metadata
+
+    def update_data(self, identifier_column, identifier_value, new_data: dict) -> None:
+        # TODO: validate the column types being updated
+        """Find rows that match the identifier and update columns with kwargs"""
+        if identifier_column == "index":
+            matching_rows = self.df[self.df.index == identifier_value]
+        else:
+            matching_rows = self.df[self.df[identifier_column] == identifier_value]
+
+        for index in matching_rows.index:
+            for key, val in new_data.items():
+                self.df.at[index, key] = val
+
+    def delete_data(self, identifier_column, identifier_value) -> None:
+        """remove data from self.df, original file not affected unitll commiting to it"""
+        self.df = self.df[self.df[identifier_column] != identifier_value]
+
 
     def _df_headers_types(self):
         """to get headers and types of the dataframe"""

@@ -35,36 +35,9 @@ class CSVDataOperator(BaseDataOperator):
             self.file_path = validate_file_path(self.file_path)  # to update new file path if name validated
             create_data_file(self.file_path)
         except pd.errors.EmptyDataError:  # to handle empty files
-            logger.error("file is empty")
+            logger.error(f'file at {validate_file_path(self.file_path)} is empty')
         finally:
             self._update_file_metadata()  # get headers and types
-
-    def insert_data(self, data: dict) -> None:
-        """gets data as a dict, converts to dataframe and concatenates to existing df"""
-        try:
-            new_data = pd.DataFrame([data])
-            if self.df.empty:
-                self.df = new_data
-            else:
-                self.df = pd.concat((self.df, new_data), ignore_index=True)
-        finally:
-            self._update_file_metadata()  # if data is inserted in an empty file get the metadata
-
-    def update_data(self, identifier_column, identifier_value, **kwargs) -> None:
-        # TODO: validate the column types being updated
-        """Find rows that match the identifier and update columns with kwargs"""
-        matching_rows = self.df[self.df[identifier_column] == identifier_value]
-
-        for index in matching_rows.index:
-            for key, value in kwargs.items():
-                self.df.at[index, key] = value
-
-        self._update_file_metadata()
-
-
-    def delete_data(self, index) -> None:
-        """remove data from self.df, original file not affected unitll commiting to it"""
-        self.df.drop(index, inplace=True)
 
     def commit_to_file(self) -> None:
         """saves modified self.df  to the file"""

@@ -1,5 +1,4 @@
 import pandas as pd
-import psycopg2
 import logging
 from .base_connector_manager import BaseConnectorManager
 from utils.orm_logger import setup_logging
@@ -24,7 +23,7 @@ class BaseManager(BaseConnectorManager):
         field_definitions = ", ".join(fields)
         query = f"CREATE TABLE IF NOT EXISTS {table_name} ({field_definitions})"
 
-        # Ill be using with to make sure cursor is closed every time
+        # I'll use cursor with "with" to make sure it is closed at the end
         with self._get_cursor() as cursor:
             cursor.execute(query)
 
@@ -45,13 +44,10 @@ class BaseManager(BaseConnectorManager):
         select_fields = ", ".join(field_names)
         query = f"SELECT {select_fields} FROM {self.model_class_name} LIMIT {batch_size}"
 
-        cursor = self._get_cursor()
-        try:
+        with self._get_cursor() as cursor:
             cursor.execute(query)
             rows = cursor.fetchall()
             return rows
-        except psycopg2.Error as e:
-            print(f"Error: {e}")
 
     def batch_insert(self, rows: list[dict]):
         """
@@ -68,12 +64,12 @@ class BaseManager(BaseConnectorManager):
         values_template = ", ".join(["%s"] * len(fields))  # the values to insert
         insert_query = f"INSERT INTO {self.model_class_name} ({', '.join(fields)}) VALUES ({values_template})"
 
-        cursor = self._get_cursor()
-        try:
-            rows_to_insert = [[row[field] for field in fields] for row in rows]
-            cursor.executemany(insert_query, rows_to_insert)
-        except KeyError as e:
-            logger.error(f"KeyError: {e}")
+        with self._get_cursor() as cursor:
+            try:
+                rows_to_insert = [[row[field] for field in fields] for row in rows]
+                cursor.executemany(insert_query, rows_to_insert)
+            except KeyError as e:
+                logger.error(f"trying to insert with invalid key")
 
     def update(self, new_data: dict, identifier_column_name, identifier_value):
         """
@@ -90,17 +86,13 @@ class BaseManager(BaseConnectorManager):
         # Construct the UPDATE query
         query = f"UPDATE {self.model_class_name} SET {set_values} WHERE {identifier_column_name} = %s"
 
-        cursor = self._get_cursor()
+        with self._get_cursor() as cursor:
 
-        try:
             values_to_update = list(new_data.values())
             values_to_update.append(identifier_value)
 
             cursor.execute(query, values_to_update)
             self.connection.commit()
-            print("Update successful.")
-        except psycopg2.Error as e:
-            print(f"Error: {e}")
 
     def delete(self, identifier_column_name, column_value):
         """
@@ -112,13 +104,9 @@ class BaseManager(BaseConnectorManager):
         """
         query = f"DELETE FROM {self.model_class_name} WHERE {identifier_column_name} = %s"
 
-        cursor = self._get_cursor()
-        try:
+        with self._get_cursor() as cursor:
             cursor.execute(query, (column_value,))
             self.connection.commit()
-            print("Delete successful.")
-        except psycopg2.Error as e:
-            print(f"Error: {e}")
 
     def export_data_as_csv(self, path_to_csv_file):
         """
@@ -127,13 +115,10 @@ class BaseManager(BaseConnectorManager):
         args
         path_to_csv_file: absolute or relative path to the csv file
         """
-        try:
-            df = self._get_data_for_export()
-            # Export DataFrame to a CSV file
-            df.to_csv(path_to_csv_file, index=False)
-            print(f"Data exported to {path_to_csv_file} successfully.")
-        except psycopg2.Error as e:
-            print(f"Error: {e}")
+        df = self._get_data_for_export()
+        # export the current dataframe to csv file
+        df.to_csv(path_to_csv_file, index=False)
+        logger.info(f"Data exported to {path_to_csv_file} successfully.")
 
     def export_data_as_json(self, path_to_json_file):
         """
@@ -142,13 +127,11 @@ class BaseManager(BaseConnectorManager):
         args
         path_to_csv_file: absolute or relative path to the json file
         """
-        try:
-            df = self._get_data_for_export()
+        df = self._get_data_for_export()
 
-            df.to_json(path_to_json_file, orient="records", indent=4)
-            print(f"data successfully exported to {path_to_json_file}")
-        except psycopg2.Error:
-            print(f"Error while exporting")
+        df.to_json(path_to_json_file, orient="records", indent=4)
+        logger.info(f"data successfully exported to {path_to_json_file}")
+
 
     def _get_data_for_export(self) -> pd.DataFrame:
         """
@@ -159,7 +142,7 @@ class BaseManager(BaseConnectorManager):
         rows = cursor.fetchall()
 
         if not rows:
-            print("No data to export.")
+            logger.info(f"no data in the table {self.model_class_name}")
             return
 
         # Get column names from the cursor description

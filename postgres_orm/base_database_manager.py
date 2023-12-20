@@ -1,7 +1,7 @@
 import pandas as pd
 import psycopg2
 import logging
-from base_connector_manager import BaseConnectorManager
+from .base_connector_manager import BaseConnectorManager
 from utils.orm_logger import setup_logging
 
 setup_logging()

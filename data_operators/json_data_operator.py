@@ -27,8 +27,9 @@ class JsonDataOperator(BaseDataOperator):
         except FileNotFoundError:
             self.file_path = validate_file_path(self.file_path)  # to update new file path if name validated
             create_data_file(self.file_path)
-        except pd.errors.EmptyDataError:
-            print("no data in the file")
+
+        except json.decoder.JSONDecodeError:  # happens when file is empty
+            logger.info(f"file {validate_file_path(self.file_path)} is empty")
         finally:
             self._update_file_metadata()
 

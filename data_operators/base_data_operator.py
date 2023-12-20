@@ -30,7 +30,6 @@ class BaseDataOperator(ABC):
             self._update_file_metadata()  # if data is inserted in an empty file get the metadata
 
     def update_data(self, identifier_column, identifier_value, new_data: dict) -> None:
-        # TODO: validate the column types being updated
         """Find rows that match the identifier and update columns with kwargs"""
         if identifier_column == "index":
             matching_rows = self.df[self.df.index == identifier_value]

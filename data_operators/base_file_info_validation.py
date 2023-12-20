@@ -18,11 +18,11 @@ class BaseFileInfo(BaseModel):
 
     @field_validator("file_name")
     def validate_name(cls, value: str):
-        """validates name agains illegal characters, if there are some, cleans them
+        """validates name against illegal characters, if there are some, cleans them
         tes&t_fil*e -> test_file
         """
         if not value:
-            logger.error(f"file name name supported, new name: {cls._clean_file_name(value)}")
+            logger.info(f"file name name supported, new name: {cls._clean_file_name(value)}")
             raise ValueError("name not valid")
         return cls._clean_file_name(value)
 

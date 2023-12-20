@@ -16,6 +16,3 @@ class BaseConnectorManager:
 
     def _get_cursor(self):
         return self.connection.cursor()
-
-    def _close_connection(self):
-        self.connection.close()

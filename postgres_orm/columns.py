@@ -1,4 +1,5 @@
 class Column:
+    """mapping all the column types with classes, so that it is easier for the user to create them"""
     def __init__(self, unique: bool = False,
                  nullable: bool = True, default: str = None) -> None:
         self.type = None

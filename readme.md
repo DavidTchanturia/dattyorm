@@ -147,7 +147,7 @@ to save the modification to the file, use the following method
 json_operator.commit_to_file()  # overwrites changes to the file initially created
 ```
 
-to insert data, use insert_data method and pass the data as dict as an argumnet. Assume we have name, age, address.city, address.street
+to insert data, use insert_data method and pass the data as dict as an arguments. Assume we have name, age, address.city, address.street
 in the dataframe.
 
 ```
@@ -179,7 +179,7 @@ print(json_operator.df)
 ```
 
 ### delete data
-works like update data, gets identifier column and identifier value as argumetns and deletes them
+works like update data, gets identifier column and identifier value as arguments and deletes them
 
 ```
 json_operator.delete_data("name", "keti")
@@ -197,6 +197,61 @@ json_operator.write_data_into_csv("your/file/path.csv")
 simple orm that lets the user perform CRUD with redis.
 
 ### setting up
+start by connecting to redis server on your local machine. In terminal
+run the following command:
+
+```
+redis-server
+```
+<br>
+
+then in your python program, import redis ORM
 ```
 from redis_orm import RedisORM
 ```
+
+to create a connection to redis from python, instantiate RedisORM class
+by defaults host=localhost, port=6379, you can change them if needed
+
+
+### insert data
+to store data into redis, use insert_into_redis method, since there are 
+no relationships or tables in redis and everything is saved on RAM, 
+try to save values that cna be identifier or grouped with similar keys.
+for instance, you can use insert_into_redis method as follows:
+
+```
+redis_orm = RedisORM()
+
+redis_orm.insert_into_redis("user:1", {'name':'John', 'age':23})
+redis_orm.insert_into_redis("user:2", {'name':'John', 'age':223})
+```
+
+### select
+simple way to select is to use key and get the value. you can also use select_all, 
+that allows you to select values based on key patterns. you can select all of the data by default
+that is currently on redis. to select all of the values that have a key starting with "user",
+you'd have to do following:
+
+```
+users = redis_orm.select_all(pattern="user*") # be careful with selecting everything without specified patterns
+```
+
+### update
+update works simply by finding a value using a key and passing values to be updated to the method
+
+### exporting
+This ORM also implements methods that let you export all the data from redis to csv or json file.
+both methods work similarly so lets take a look at one.
+
+```
+redis_orm.export_all_to_csv(pattern="user*", file_path="redis_data.csv")
+```
+to make sure you are exporting all the data about related topics and not just everything from redis
+it is advised to specify the pattern. this creates a csv file and then writes all the selected
+data in it.
+
+
+# Important Note
+program automatically creates orm_log.txt file when you install it and will log any necessary and important
+errors or info messages.

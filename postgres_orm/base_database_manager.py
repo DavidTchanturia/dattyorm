@@ -3,12 +3,18 @@ import logging
 from .base_connector_manager import BaseConnectorManager
 from . import columns
 from utils.orm_logger import setup_logging
+import psycopg2
 
 setup_logging()
 logger = logging.getLogger(__name__)
 
 
 class BaseManager(BaseConnectorManager):
+    def __init__(self, model_class_instance, db_settings = None):
+        super().__init__(model_class_instance)
+        self.set_connection(db_settings)
+        self.table_manager = TableManager(self.model_class_name, self._get_cursor())
+
     def create_table(self, model_class_instance):
         """
         creates a table base on the class name that inherits from BaseModel.
@@ -133,16 +139,6 @@ class BaseManager(BaseConnectorManager):
         df.to_json(path_to_json_file, orient="records", indent=4)
         logger.info(f"data successfully exported to {path_to_json_file}")
 
-    def add_column_to_table(self, column_name, column_class) -> None:
-        if not isinstance(column_class, columns.Column):
-            logger.error(f"Column class: {column_class} not a valid column")
-
-        query = f"ALTER TABLE {self.model_class_name} ADD COLUMN {column_name} {column_class.type}"
-
-        with self._get_cursor() as cursor:
-            cursor.execute(query)
-
-
     def _get_data_for_export(self) -> pd.DataFrame:
         """
         select all the data from table and return them as pandas Dataframe
@@ -163,3 +159,35 @@ class BaseManager(BaseConnectorManager):
 
         return df
 
+
+class TableManager:
+    def __init__(self, model_class_name: str, cursor):
+        self.model_class_name = model_class_name
+        self.cursor = cursor
+
+    def add_column_to_table(self, column_name, column_class) -> None:
+        try:
+            if not isinstance(column_class, columns.Column):
+                logger.error(f"Column class: {column_class} not a valid column")
+
+            query = f"ALTER TABLE {self.model_class_name} ADD COLUMN {column_name} {column_class.type}"
+
+            self.cursor.execute(query)
+        except psycopg2.errors.DuplicateColumn:
+            logger.error(f"column {column_name} already exists")
+
+    def drop_column(self, column_name,) -> None:
+        try:
+            query = f"ALTER TABLE {self.model_class_name} DROP COLUMN {column_name}"
+
+            self.cursor.execute(query)
+        except psycopg2.errors.UndefinedColumn as e:
+            logger.error(f"column {column_name} does not exists")
+
+    def drop_table(self):
+        try:
+            query = f"DROP TABLE {self.model_class_name}"
+
+            self.cursor.execute(query)
+        except psycopg2.errors.UndefinedTable:
+            logger.error(f"table {self.model_class_name} does not")

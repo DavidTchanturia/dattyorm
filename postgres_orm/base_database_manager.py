@@ -1,6 +1,7 @@
 import pandas as pd
 import logging
 from .base_connector_manager import BaseConnectorManager
+from . import columns
 from utils.orm_logger import setup_logging
 
 setup_logging()
@@ -132,6 +133,15 @@ class BaseManager(BaseConnectorManager):
         df.to_json(path_to_json_file, orient="records", indent=4)
         logger.info(f"data successfully exported to {path_to_json_file}")
 
+    def add_column_to_table(self, column_name, column_class) -> None:
+        if not isinstance(column_class, columns.Column):
+            logger.error(f"Column class: {column_class} not a valid column")
+
+        query = f"ALTER TABLE {self.model_class_name} ADD COLUMN {column_name} {column_class.type}"
+
+        with self._get_cursor() as cursor:
+            cursor.execute(query)
+
 
     def _get_data_for_export(self) -> pd.DataFrame:
         """
@@ -152,3 +162,4 @@ class BaseManager(BaseConnectorManager):
         df = pd.DataFrame(rows, columns=columns)
 
         return df
+

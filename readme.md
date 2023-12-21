@@ -47,24 +47,25 @@ default, unique columns.
 once the database setting have been defined, connection is established as follows:
 
 ```
-employee_instance = Employee()  # Instantiate the Employee class  
-manager = BaseManager(employee_instance) # to create instance working with our employee table
-  
-manager.set_connection(DB_SETTINGS)  
-  
-# Create the Employee table  
+employee_instance = Employee()  # Instantiate the Employee class
+manager = BaseManager(employee_instance, DB_SETTINGS)  # to create instance working with our employee table
+
+# Create the Employee table
 manager.create_table(employee_instance)
 ```
 #### adding a new column to existing table
 after you have connected to a database and have instantiated a class that connects to a table, you can also add a new column
-to the table
+to the table. manager instance has a composite part, called table_manager, which lets to modify table directly. here are
+exampls to add column, drop column, drop table
 
 ```
-manager.add_column_to_table("satesto", columns.VarChar())
+manager.table_manager.add_column_to_table("rame", columns.VarChar())
+manager.table_manager.drop_column("last_name")
+manager.table_manager.drop_table()
 ```
 
 add_column_to_table(), takes in two arguments, name of the new column, and a type class from columns.py, that will
-map it to appropriate SQL type.
+map it to appropriate SQL type. drop_column just needs the column name. drop table drops the table.
 
 ## Basic CRUD operations
 

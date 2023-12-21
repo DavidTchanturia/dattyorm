@@ -55,6 +55,16 @@ manager.set_connection(DB_SETTINGS)
 # Create the Employee table  
 manager.create_table(employee_instance)
 ```
+#### adding a new column to existing table
+after you have connected to a database and have instantiated a class that connects to a table, you can also add a new column
+to the table
+
+```
+manager.add_column_to_table("satesto", columns.VarChar())
+```
+
+add_column_to_table(), takes in two arguments, name of the new column, and a type class from columns.py, that will
+map it to appropriate SQL type.
 
 ## Basic CRUD operations
 

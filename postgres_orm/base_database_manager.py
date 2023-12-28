@@ -1,7 +1,6 @@
 import pandas as pd
 import logging
 from .base_connector_manager import BaseConnectorManager
-from . import columns
 from utils.orm_logger import setup_logging
 import psycopg2
 
@@ -10,27 +9,21 @@ logger = logging.getLogger(__name__)
 
 
 class BaseManager(BaseConnectorManager):
-    def __init__(self, model_class_instance, db_settings = None):
-        super().__init__(model_class_instance)
+    def __init__(self, table_name, columns_dict, db_settings=None):
+        super().__init__(table_name)
+        self.columns_dict = columns_dict
         self.set_connection(db_settings)
-        self.table_manager = TableManager(self.model_class_name, self._get_cursor())
+        self.table_manager = TableManager(self.table_name, self._get_cursor())
 
-    def create_table(self, model_class_instance):
+    def create_table(self):
         """
-        creates a table base on the class name that inherits from BaseModel.
-        -------
-        class Example(BaseManager): -> creates example table
-
-        args:
-        - `model_class_instance`: an instance of class representing the table in the db.
+        Creates a table based on the provided columns_dict.
         """
-        table_name = self.model_class_name
-        fields = [f"{field} {data_type}" for field, data_type in model_class_instance.fields.items()]
-        # construct create table query
+        table_name = self.table_name
+        fields = [f"{field} {data_type}" for field, data_type in self.columns_dict.items()]
         field_definitions = ", ".join(fields)
         query = f"CREATE TABLE IF NOT EXISTS {table_name} ({field_definitions})"
 
-        # I'll use cursor with "with" to make sure it is closed at the end
         with self._get_cursor() as cursor:
             cursor.execute(query)
 
@@ -49,7 +42,7 @@ class BaseManager(BaseConnectorManager):
 
         # construct select query
         select_fields = ", ".join(field_names)
-        query = f"SELECT {select_fields} FROM {self.model_class_name} LIMIT {batch_size}"
+        query = f"SELECT {select_fields} FROM {self.table_name} LIMIT {batch_size}"
 
         with self._get_cursor() as cursor:
             cursor.execute(query)
@@ -69,7 +62,7 @@ class BaseManager(BaseConnectorManager):
 
         fields = list(rows[0].keys())  # row headers
         values_template = ", ".join(["%s"] * len(fields))  # the values to insert
-        insert_query = f"INSERT INTO {self.model_class_name} ({', '.join(fields)}) VALUES ({values_template})"
+        insert_query = f"INSERT INTO {self.table_name} ({', '.join(fields)}) VALUES ({values_template})"
 
         with self._get_cursor() as cursor:
             try:
@@ -91,7 +84,7 @@ class BaseManager(BaseConnectorManager):
         set_values = ", ".join([f"{key} = %s" for key in new_data.keys()])
 
         # Construct the UPDATE query
-        query = f"UPDATE {self.model_class_name} SET {set_values} WHERE {identifier_column_name} = %s"
+        query = f"UPDATE {self.table_name} SET {set_values} WHERE {identifier_column_name} = %s"
 
         with self._get_cursor() as cursor:
 
@@ -109,7 +102,7 @@ class BaseManager(BaseConnectorManager):
         identifier_column_name: column name to identify row with
         column_value: value of the given column name to select single or multiple rows
         """
-        query = f"DELETE FROM {self.model_class_name} WHERE {identifier_column_name} = %s"
+        query = f"DELETE FROM {self.table_name} WHERE {identifier_column_name} = %s"
 
         with self._get_cursor() as cursor:
             cursor.execute(query, (column_value,))
@@ -144,11 +137,11 @@ class BaseManager(BaseConnectorManager):
         select all the data from table and return them as pandas Dataframe
         """
         cursor = self._get_cursor()
-        cursor.execute(f"SELECT * FROM {self.model_class_name}")
+        cursor.execute(f"SELECT * FROM {self.table_name}")
         rows = cursor.fetchall()
 
         if not rows:
-            logger.info(f"no data in the table {self.model_class_name}")
+            logger.info(f"no data in the table {self.table_name}")
             return
 
         # Get column names from the cursor description
@@ -165,16 +158,16 @@ class TableManager:
         self.model_class_name = model_class_name
         self.cursor = cursor
 
-    def add_column_to_table(self, column_name, column_class) -> None:
-        try:
-            if not isinstance(column_class, columns.Column):
-                logger.error(f"Column class: {column_class} not a valid column")
-
-            query = f"ALTER TABLE {self.model_class_name} ADD COLUMN {column_name} {column_class.type}"
-
-            self.cursor.execute(query)
-        except psycopg2.errors.DuplicateColumn:
-            logger.error(f"column {column_name} already exists")
+    # def add_column_to_table(self, column_name, column_class) -> None:
+    #     try:
+    #         if not isinstance(column_class, columns.Column):
+    #             logger.error(f"Column class: {column_class} not a valid column")
+    #
+    #         query = f"ALTER TABLE {self.model_class_name} ADD COLUMN {column_name} {column_class.type}"
+    #
+    #         self.cursor.execute(query)
+    #     except psycopg2.errors.DuplicateColumn:
+    #         logger.error(f"column {column_name} already exists")
 
     def drop_column(self, column_name,) -> None:
         try:

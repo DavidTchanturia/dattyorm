@@ -13,8 +13,8 @@ class BaseManager(BaseConnectorManager):
         super().__init__(table_name)
         self.columns_dict = columns_dict
         self.set_connection(db_settings)
-        self.table_manager = TableManager(self.table_name, self._get_cursor())
 
+    ################################### table modification section ####################################
     def create_table(self):
         """
         Creates a table based on the provided columns_dict.
@@ -27,6 +27,34 @@ class BaseManager(BaseConnectorManager):
         with self._get_cursor() as cursor:
             cursor.execute(query)
 
+    def drop_table(self):
+        try:
+            query = f"DROP TABLE {self.table_name}"
+            with self._get_cursor() as cursor:
+                cursor.execute(query)
+        except psycopg2.errors.UndefinedTable:
+            logger.error(f"table {self.table_name} does not exist")
+
+    def add_column_to_table(self, new_column_description: dict) -> None:
+        try:
+            with self._get_cursor() as cursor:
+                for column_name, column_description in new_column_description.items():
+                    query = f"ALTER TABLE {self.table_name} ADD COLUMN {column_name} {column_description}"
+                    cursor.execute(query)
+
+        except psycopg2.errors.DuplicateColumn:
+            logger.error(f"column already exists in the table")
+
+    def drop_column(self, column_name) -> None:
+        try:
+            query = f"ALTER TABLE {self.table_name} DROP COLUMN {column_name}"
+
+            with self._get_cursor() as cursor:
+                cursor.execute(query)
+        except psycopg2.errors.UndefinedColumn:
+            logger.error(f"column {column_name} does not exists")
+
+    ################################### CRUD section ####################################
     def select(self, *field_names, batch_size=1000):
         """
         select data from the database, can select custom fields and sizes
@@ -71,30 +99,33 @@ class BaseManager(BaseConnectorManager):
             except KeyError as e:
                 logger.error(f"trying to insert with invalid key")
 
-    def update(self, new_data: dict, identifier_column_name, identifier_value):
+    def update_with_condition(self, new_data: dict, conditions_to_meet: dict):
         """
-        update single or many rows of data. in each row of data, all of the values or selected values
-        could be modified
+        Update rows based on the provided conditions.
 
-        args:
-        - `new_data`: dict of the column-value pairs to be updated.
-        - `identifier_column_name`: column name to identify which columns to update.
-        - `identifier_value`: find the columns that have given value to update them.
+        Args:
+        - `new_data`: Dict of the column-value pairs to be updated.
+        - `conditions_to_meet`: Dict of conditions that rows must meet to be updated.
+
+        Example:
+        conditions_to_meet = {"column1": value1, "column2": value2}
+        new_data = {"column3": new_value}
+
+        Update rows where column1 equals value1 and column2 equals value2,
+        set column3 to new_value.
         """
         set_values = ", ".join([f"{key} = %s" for key in new_data.keys()])
+        condition_values = [f"{key} = %s" for key in conditions_to_meet.keys()]
 
-        # Construct the UPDATE query
-        query = f"UPDATE {self.table_name} SET {set_values} WHERE {identifier_column_name} = %s"
+        # Construct the UPDATE query with conditions
+        query = f"UPDATE {self.table_name} SET {set_values} WHERE {' AND '.join(condition_values)}"
 
         with self._get_cursor() as cursor:
-
-            values_to_update = list(new_data.values())
-            values_to_update.append(identifier_value)
-
+            values_to_update = list(new_data.values()) + list(conditions_to_meet.values())
             cursor.execute(query, values_to_update)
             self.connection.commit()
 
-    def delete(self, identifier_column_name, column_value):
+    def delete_with_condition(self, conditions_to_meet: dict):
         """
         based on identifier provided, delete a row or rows from the table.
 
@@ -102,10 +133,13 @@ class BaseManager(BaseConnectorManager):
         identifier_column_name: column name to identify row with
         column_value: value of the given column name to select single or multiple rows
         """
-        query = f"DELETE FROM {self.table_name} WHERE {identifier_column_name} = %s"
+        condition_values = [f"{key} = %s" for key in conditions_to_meet.keys()]
+
+        # Construct the DELETE query with conditions
+        query = f"DELETE FROM {self.table_name} WHERE {' AND '.join(condition_values)}"
 
         with self._get_cursor() as cursor:
-            cursor.execute(query, (column_value,))
+            cursor.execute(query, list(conditions_to_meet.values()))
             self.connection.commit()
 
     def export_data_as_csv(self, path_to_csv_file):
@@ -151,36 +185,3 @@ class BaseManager(BaseConnectorManager):
         df = pd.DataFrame(rows, columns=columns)
 
         return df
-
-
-class TableManager:
-    def __init__(self, model_class_name: str, cursor):
-        self.model_class_name = model_class_name
-        self.cursor = cursor
-
-    # def add_column_to_table(self, column_name, column_class) -> None:
-    #     try:
-    #         if not isinstance(column_class, columns.Column):
-    #             logger.error(f"Column class: {column_class} not a valid column")
-    #
-    #         query = f"ALTER TABLE {self.model_class_name} ADD COLUMN {column_name} {column_class.type}"
-    #
-    #         self.cursor.execute(query)
-    #     except psycopg2.errors.DuplicateColumn:
-    #         logger.error(f"column {column_name} already exists")
-
-    def drop_column(self, column_name,) -> None:
-        try:
-            query = f"ALTER TABLE {self.model_class_name} DROP COLUMN {column_name}"
-
-            self.cursor.execute(query)
-        except psycopg2.errors.UndefinedColumn as e:
-            logger.error(f"column {column_name} does not exists")
-
-    def drop_table(self):
-        try:
-            query = f"DROP TABLE {self.model_class_name}"
-
-            self.cursor.execute(query)
-        except psycopg2.errors.UndefinedTable:
-            logger.error(f"table {self.model_class_name} does not")

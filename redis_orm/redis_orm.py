@@ -13,16 +13,6 @@ class RedisORM:
     def __init__(self, host='localhost', port=6379):
         self.redis_client = redis.Redis(host=host, port=port)
 
-    def _serialize_data(self, data):
-        """turn class object into json"""
-        return json.dumps(data)
-
-    def _deserialize_data(self, serialized_data):
-        """get class object from serialized_dat"""
-        if serialized_data:
-            return json.loads(serialized_data)
-        return None
-
     def insert_into_redis(self, key, data):
         """key could be automatically generated, but then user would not be able to find them,
         user needs to specify the key and then the data
@@ -33,7 +23,7 @@ class RedisORM:
         self.redis_client.set(key, serialized_data)
 
     def select_from_redis(self, key):
-        """select specifc values based on the key"""
+        """select specific values based on the key"""
         serialized_data = self.redis_client.get(key)
         return self._deserialize_data(serialized_data)
 
@@ -42,7 +32,7 @@ class RedisORM:
         TO KEEP IN MIND !!!!!!!
         since redis can have other data as well
         you will have to verify the patter
-        for isntance to select all data with key person
+        for instance to select all data with key person
         pattern=person*
         """
         try:
@@ -82,3 +72,13 @@ class RedisORM:
         df.to_json(file_path, orient='index', indent=4)
         print(f"Data exported to {file_path} successfully.")
 
+
+    def _serialize_data(self, data):
+        """turn class object into json"""
+        return json.dumps(data)
+
+    def _deserialize_data(self, serialized_data):
+        """get class object from serialized_dat"""
+        if serialized_data:
+            return json.loads(serialized_data)
+        return None

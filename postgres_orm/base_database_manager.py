@@ -9,12 +9,12 @@ logger = logging.getLogger(__name__)
 
 
 class BaseManager(BaseConnectorManager):
-    def __init__(self, table_name, columns_dict, db_settings=None):
+    def __init__(self, table_name, columns_dict=None, db_settings=None):
         super().__init__(table_name)
         self.columns_dict = columns_dict
         self.set_connection(db_settings)
 
-    ################################### table modification section ####################################
+    ################################### table modification section ###################################
     def create_table(self):
         """
         Creates a table based on the provided columns_dict.
@@ -99,7 +99,7 @@ class BaseManager(BaseConnectorManager):
             except KeyError as e:
                 logger.error(f"trying to insert with invalid key")
 
-    def update_with_condition(self, new_data: dict, conditions_to_meet: dict):
+    def update_with_condition(self, new_data_for_update: dict, conditions_to_meet: dict):
         """
         Update rows based on the provided conditions.
 
@@ -114,14 +114,14 @@ class BaseManager(BaseConnectorManager):
         Update rows where column1 equals value1 and column2 equals value2,
         set column3 to new_value.
         """
-        set_values = ", ".join([f"{key} = %s" for key in new_data.keys()])
+        set_values = ", ".join([f"{key} = %s" for key in new_data_for_update.keys()])
         condition_values = [f"{key} = %s" for key in conditions_to_meet.keys()]
 
         # Construct the UPDATE query with conditions
         query = f"UPDATE {self.table_name} SET {set_values} WHERE {' AND '.join(condition_values)}"
 
         with self._get_cursor() as cursor:
-            values_to_update = list(new_data.values()) + list(conditions_to_meet.values())
+            values_to_update = list(new_data_for_update.values()) + list(conditions_to_meet.values())
             cursor.execute(query, values_to_update)
             self.connection.commit()
 
@@ -166,6 +166,35 @@ class BaseManager(BaseConnectorManager):
         df.to_json(path_to_json_file, orient="records", indent=4)
         logger.info(f"data successfully exported to {path_to_json_file}")
 
+    ################################### pattern matching section ####################################
+    def select_columns_starting_with_pattern(self, patterns: dict) -> dict[tuple]:
+        try:
+
+            conditions = " AND ".join([f"{column} LIKE '{pattern}%'" for column, pattern in patterns.items()])
+            query = f"SELECT * FROM {self.table_name} WHERE {conditions}"
+
+            return self._select_query_executor(query)
+        except psycopg2.errors.UndefinedColumn:
+            logger.error(f"can't perform select on non-existing columns: {patterns.keys()}")
+
+    def select_columns_ending_with_pattern(self, patterns: dict) -> dict[tuple]:
+        try:
+            conditions = " AND ".join([f"{column} LIKE '%{pattern}'" for column, pattern in patterns.items()])
+            query = f"SELECT * FROM {self.table_name} WHERE {conditions}"
+
+            return self._select_query_executor(query)
+        except psycopg2.errors.UndefinedColumn:
+            logger.error(f"can't perform select on non-existing columns: {patterns.keys()}")
+
+    def select_columns_containing_pattern(self, patterns: dict) -> dict[tuple]:
+        try:
+            conditions = " AND ".join([f"{column} LIKE '%{pattern}%'" for column, pattern in patterns.items()])
+            query = f"SELECT * FROM {self.table_name} WHERE {conditions}"
+
+            return self._select_query_executor(query)
+        except psycopg2.errors.UndefinedColumn:
+            logger.error(f"can't perform select on non-existing columns: {patterns.keys()}")
+
     def _get_data_for_export(self) -> pd.DataFrame:
         """
         select all the data from table and return them as pandas Dataframe
@@ -185,3 +214,9 @@ class BaseManager(BaseConnectorManager):
         df = pd.DataFrame(rows, columns=columns)
 
         return df
+
+    def _select_query_executor(self, query: str):
+        with self._get_cursor() as cursor:
+            cursor.execute(query)
+            rows = cursor.fetchall()
+            return rows

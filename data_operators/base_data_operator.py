@@ -10,6 +10,7 @@ class BaseDataOperator(ABC):
         self.data = {}
         self.file_metadata = None
 
+
     @abstractmethod
     def get_data(self):
         pass
@@ -51,26 +52,27 @@ class BaseDataOperator(ABC):
 
         for index in indices_to_remove:
             del self.data[index]
-    #
-    # def _df_headers_types(self):
-    #     """to get headers and types of the dataframe"""
-    #     if self.df.empty:
-    #         return {}
-    #
-    #     columns = self.df.columns
-    #     types = self.df.dtypes
-    #     headers_and_types = {column: str(dtype) for column, dtype in zip(columns, types)}
-    #     return headers_and_types
 
-    # def _update_file_metadata(self) -> None:
-    #     """assign the actual metadata to self.df
-    #
-    #     will be called after the initial creation of the file"""
-    #     # since the first variable is directory path, no need for it
-    #     _, file_name, file_extension = parse_file_path(self.file_path)
-    #     file_info = get_metadata(self.file_path)
-    #     self.file_metadata = BaseFileInfo(file_name=file_name, file_extension=file_extension, **file_info)
-    #     self.file_metadata.headers_and_types = self._df_headers_types()
+    def _dict_headers_types(self):
+        """to get headers and types of the dictionary"""
+        if not self.data:
+            return {}
 
+        first_entry = next(iter(self.data.values()))
+        headers_and_types = {column: type(value).__name__ for column, value in first_entry.items()}
+        return headers_and_types
+
+    def _update_file_metadata(self) -> None:
+        """assign the actual metadata to self.file_metadata
+
+        will be called after the initial creation of the file"""
+        _, file_name, file_extension = parse_file_path(self.file_path)
+        file_info = get_metadata(self.file_path)
+
+        # Create BaseFileInfo object
+        self.file_metadata = BaseFileInfo(file_name=file_name, file_extension=file_extension, **file_info)
+
+        # Update headers and types
+        self.file_metadata.headers_and_types = self._dict_headers_types()
 
 

@@ -3,8 +3,8 @@ from utils.helpers import create_data_file, validate_file_path
 from utils.orm_logger import setup_logging
 import logging
 import os
-import pandas as pd
 import json
+import csv
 
 setup_logging()
 logger = logging.getLogger(__name__)
@@ -18,28 +18,52 @@ class JsonDataOperator(BaseDataOperator):
         super().__init__(file_path=file_path)
 
     def get_data(self):
+        """Read data from a JSON file and assign it to self.data"""
         try:
-            # to handle json files that might have nested data
             with open(self.file_path, 'r') as file:
                 data = json.load(file)
-            # Normalize the JSON data into a DataFrame
-            self.df = pd.json_normalize(data)  # to try to normalize all the nested json data
+                for idx, row in enumerate(data):
+                    self.data[idx] = row
         except FileNotFoundError:
-            self.file_path = validate_file_path(self.file_path)  # to update new file path if name validated
+            logger.error("file at the given path does not exist, creating a new one.")
+            self.file_path = validate_file_path(self.file_path)
             create_data_file(self.file_path)
-
-        except json.decoder.JSONDecodeError:  # happens when file is empty
-            logger.info(f"file {validate_file_path(self.file_path)} is empty")
+        except json.decoder.JSONDecodeError:
+            logger.info(f"file {validate_file_path(self.file_path)} is empty.")
         finally:
             self._update_file_metadata()
 
     def commit_to_file(self) -> None:
-        """saves modified self.df  to the file"""
-        self.df.to_json(self.file_path, index=False, orient="records", indent=4)
+        """Save modified self.data to the JSON file"""
+        try:
+            with open(self.file_path, 'w') as jsonfile:
+                json.dump(list(self.data.values()), jsonfile, indent=4)
+        except IOError as e:
+            logger.error(f"Error writing to JSON file: {e}")
 
-    def write_data_into_csv(self, path_to_json_location):
-        """convert dataframe to json and save to json
+    def write_data_into_csv(self, path_to_csv_location):
+        """Convert data to CSV and save to a CSV file"""
+        try:
+            if not self.data:
+                logger.warning("No data to write to CSV.")
+                return
 
-        if json does not exist, create with validating the name"""
-        validated_json_csv = validate_file_path(path_to_json_location)
-        self.df.to_csv(validated_json_csv, index=False)
+            validated_csv_path = validate_file_path(path_to_csv_location)
+
+            with open(validated_csv_path, 'w', newline='') as csvfile:
+                csv_writer = csv.DictWriter(csvfile, fieldnames=self._get_fieldnames())
+
+                # Write header
+                if self.data:
+                    csv_writer.writeheader()
+
+                    # Write rows
+                    for row_data in self.data.values():
+                        csv_writer.writerow(row_data)
+        except IOError as e:
+            logger.error(f"Error writing to CSV file: {e}")
+
+    def _get_fieldnames(self):
+        if not self.data:
+            return []
+        return list(self.data[0].keys())

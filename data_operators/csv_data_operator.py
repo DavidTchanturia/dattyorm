@@ -1,12 +1,14 @@
-import os
 from data_operators.base_data_operator import BaseDataOperator
-import pandas as pd
 from utils.helpers import create_data_file, validate_file_path
 from utils.orm_logger import setup_logging
 import logging
+import json
+import csv
+import os
 
 setup_logging()
 logger = logging.getLogger(__name__)
+
 
 class CSVDataOperator(BaseDataOperator):
     CURRENT_WORKING_DIRECTORY = os.getcwd()
@@ -29,25 +31,51 @@ class CSVDataOperator(BaseDataOperator):
         --> date_created
         --> headers and their types in pd"""
         try:
-            self.df = pd.read_csv(self.file_path)
+            with open(self.file_path, 'r', newline='') as csvfile:
+                csvreader = csv.DictReader(csvfile)
+                for idx, row in enumerate(csvreader):
+                    self.data[idx] = row
         except FileNotFoundError:
             logger.error("file at given path does not exist, creating new one")
             self.file_path = validate_file_path(self.file_path)  # to update new file path if name validated
             create_data_file(self.file_path)
-        except pd.errors.EmptyDataError:  # to handle empty files
-            logger.error(f'file at {validate_file_path(self.file_path)} is empty')
         finally:
-            self._update_file_metadata()  # get headers and types
+            # self._update_file_metadata()  # get headers and types
+            pass
 
     def commit_to_file(self) -> None:
-        """saves modified self.df  to the file"""
-        self.df.to_csv(self.file_path, index=False)
+        try:
+            if not self.data:
+                logger.warning("No data to write to file.")
+                return
+
+            # get the names of fields from key values
+            fieldnames = list(self.data[next(iter(self.data))].keys())
+
+            with open(self.file_path, 'w', newline='') as csvfile:
+                writer = csv.DictWriter(csvfile, fieldnames=fieldnames)
+
+                # Write header
+                writer.writeheader()
+
+                # Write rows
+                for row_data in self.data.values():
+                    writer.writerow(row_data)
+        except IOError as e:
+            logger.error(f"Error writing to CSV file: {e}")
 
     def write_data_into_json(self, path_to_json_location):
-        """convert dataframe to json and save to json
+        """convert data to JSON and save to a JSON file"""
+        try:
+            if not self.data:
+                logger.warning("No data to write to JSON.")
+                return
 
-        if json does not exist, create with validating the name"""
-        validated_json_path = validate_file_path(path_to_json_location)
-        self.df.to_json(validated_json_path, index=False, orient='records', indent=4, force_ascii=False)
+            validated_json_path = validate_file_path(path_to_json_location)
+
+            with open(validated_json_path, 'w') as jsonfile:
+                json.dump(list(self.data.values()), jsonfile, indent=4)
+        except IOError as e:
+            logger.error(f"Error writing to JSON file: {e}")
 
 

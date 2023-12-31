@@ -10,7 +10,6 @@ class BaseDataOperator(ABC):
         self.data = {}
         self.file_metadata = None
 
-
     @abstractmethod
     def get_data(self):
         pass
@@ -19,38 +18,29 @@ class BaseDataOperator(ABC):
     def commit_to_file(self) -> None:
         pass
 
-    def insert_data(self, data: dict) -> None:
-        """gets data as a dict, converts to dataframe and concatenates to existing df"""
+    def insert_data(self, data_list: list[dict]) -> None:
+        """inserts multiple rows of data (list of dicts) into the data attribute"""
         try:
-            idx = len(self.data)  # Get the next index for the new entry
-            self.data[idx] = data
-        except:
-            ...
-        # finally:
-        #     self._update_file_metadata()  # if data is inserted in an empty file get the metadata
+            starting_index = len(self.data)  # Get the starting index for the new entries
+            for idx, data in enumerate(data_list):
+                self.data[starting_index + idx] = data
+        finally:
+            self._update_file_metadata()   # if data is inserted in an empty file get the metadata
 
-    def update_data(self, identifier_column, identifier_value, new_data: dict) -> None:
-        """Find rows that match the identifier and update columns with kwargs"""
-        matching_indices = []
+    def update_data(self, conditions_to_meet: dict, new_data: dict) -> None:
+        """Find rows that match the conditions and update with new_data"""
+        indices = self._find_matching_rows_for_conditions(conditions_to_meet)
 
-        for index, row_data in self.data.items():
-            if row_data.get(identifier_column) == identifier_value:
-                matching_indices.append(index)
-
-        for index in matching_indices:
+        for index in indices:
             row_data = self.data[index]
-            for key, val in new_data.items():
-                row_data[key] = val
+            for key, value in new_data.items():
+                row_data[key] = value
 
-    def delete_data(self, identifier_column, identifier_value) -> None:
-        """remove data from self.df, original file not affected until committing to it"""
-        indices_to_remove = []
+    def delete_data(self, conditions_to_meet_to_delete: dict) -> None:
+        """Remove rows from self.data that match the given conditions"""
+        indices = self._find_matching_rows_for_conditions(conditions_to_meet_to_delete)
 
-        for index, row_data in self.data.items():
-            if row_data.get(identifier_column) == identifier_value:
-                indices_to_remove.append(index)
-
-        for index in indices_to_remove:
+        for index in indices:
             del self.data[index]
 
     def _dict_headers_types(self):
@@ -75,4 +65,14 @@ class BaseDataOperator(ABC):
         # Update headers and types
         self.file_metadata.headers_and_types = self._dict_headers_types()
 
-
+    def _find_matching_rows_for_conditions(self, conditions: dict) -> list:
+        indices = []
+        for index, row_data in self.data.items():
+            matched = True
+            for key, value in conditions.items():
+                if row_data.get(key) != value:
+                    matched = False
+                    break  # Break the loop if any condition doesn't match
+            if matched:
+                indices.append(index)
+        return indices

@@ -1,6 +1,7 @@
 from data_operators.base_data_operator import BaseDataOperator
 from utils.helpers import create_data_file, validate_file_path
 from utils.orm_logger import setup_logging
+from utils.constants import BACKUP_FILE_NAME
 import logging
 import os
 import json
@@ -12,7 +13,7 @@ logger = logging.getLogger(__name__)
 
 class JsonDataOperator(BaseDataOperator):
     CURRENT_WORKING_DIRECTORY = os.getcwd()
-    BACKUP_FILE_PATH = os.path.join(CURRENT_WORKING_DIRECTORY, "this_is_a_backup_file.json")
+    BACKUP_FILE_PATH = os.path.join(CURRENT_WORKING_DIRECTORY, f"{BACKUP_FILE_NAME}.json")
 
     def __init__(self, file_path=BACKUP_FILE_PATH):
         super().__init__(file_path=file_path)
@@ -39,7 +40,7 @@ class JsonDataOperator(BaseDataOperator):
             with open(self.file_path, 'w') as jsonfile:
                 json.dump(list(self.data.values()), jsonfile, indent=4)
         except IOError as e:
-            logger.error(f"Error writing to JSON file: {e}")
+            logger.error(f"error writing to JSON file: {e}")
 
     def write_data_into_csv(self, path_to_csv_location):
         """Convert data to CSV and save to a CSV file"""
@@ -61,7 +62,7 @@ class JsonDataOperator(BaseDataOperator):
                     for row_data in self.data.values():
                         csv_writer.writerow(row_data)
         except IOError as e:
-            logger.error(f"Error writing to CSV file: {e}")
+            logger.error(f"error writing to CSV file: {e}")
 
     def _get_fieldnames(self):
         if not self.data:

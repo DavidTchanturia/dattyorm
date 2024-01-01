@@ -1,6 +1,5 @@
 from abc import ABC, abstractmethod
 from utils.helpers import parse_file_path, get_metadata
-import pandas as pd
 from data_operators.base_file_info_validation import BaseFileInfo
 
 
@@ -28,13 +27,20 @@ class BaseDataOperator(ABC):
             self._update_file_metadata()   # if data is inserted in an empty file get the metadata
 
     def update_data(self, conditions_to_meet: dict, new_data: dict) -> None:
-        """Find rows that match the conditions and update with new_data"""
+        """find rows that match the conditions and update with new_data"""
         indices = self._find_matching_rows_for_conditions(conditions_to_meet)
 
         for index in indices:
             row_data = self.data[index]
             for key, value in new_data.items():
                 row_data[key] = value
+
+    def add_new_column(self, column_name: str, default_value=None) -> None:
+        """ddd a new column to all existing data with the specified default value"""
+        for row_data in self.data.values():
+            row_data[column_name] = default_value
+
+        self._update_file_metadata()
 
     def delete_data(self, conditions_to_meet_to_delete: dict) -> None:
         """Remove rows from self.data that match the given conditions"""
@@ -59,10 +65,10 @@ class BaseDataOperator(ABC):
         _, file_name, file_extension = parse_file_path(self.file_path)
         file_info = get_metadata(self.file_path)
 
-        # Create BaseFileInfo object
+        # create BaseFileInfo object
         self.file_metadata = BaseFileInfo(file_name=file_name, file_extension=file_extension, **file_info)
 
-        # Update headers and types
+        # update headers and types
         self.file_metadata.headers_and_types = self._dict_headers_types()
 
     def _find_matching_rows_for_conditions(self, conditions: dict) -> list:
@@ -72,7 +78,7 @@ class BaseDataOperator(ABC):
             for key, value in conditions.items():
                 if row_data.get(key) != value:
                     matched = False
-                    break  # Break the loop if any condition doesn't match
+                    break  # break the loop if any condition doesn't match
             if matched:
                 indices.append(index)
         return indices

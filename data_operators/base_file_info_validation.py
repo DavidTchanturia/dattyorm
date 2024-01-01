@@ -21,9 +21,9 @@ class BaseFileInfo(BaseModel):
         """validates name against illegal characters, if there are some, cleans them
         tes&t_fil*e -> test_file
         """
-        if not value:
-            logger.info(f"file name name supported, new name: {cls._clean_file_name(value)}")
-            raise ValueError("name not valid")
+        if value != cls._clean_file_name(value):
+            logger.info(f"file name not supported, new name: {cls._clean_file_name(value)}")
+            # raise ValueError("name not valid")
         return cls._clean_file_name(value)
 
     @field_validator("file_extension")
@@ -31,7 +31,7 @@ class BaseFileInfo(BaseModel):
         """if the extension is not csv or json, raises error
 
         cant be forced to validate"""
-        if not value or value not in ["csv", "json"]:
+        if value not in ["csv", "json"]:
             logger.error(f"file should either be csv or json")
             raise ValueError("not valid file extension")
         return value

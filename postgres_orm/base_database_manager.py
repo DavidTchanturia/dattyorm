@@ -17,7 +17,7 @@ class BaseManager(BaseConnectorManager):
     ################################### table modification section ###################################
     def create_table(self):
         """
-        Creates a table based on the provided columns_dict.
+        creates a table based on self.columns_dict
         """
         table_name = self.table_name
         fields = [f"{field} {data_type}" for field, data_type in self.columns_dict.items()]
@@ -36,6 +36,13 @@ class BaseManager(BaseConnectorManager):
             logger.error(f"table {self.table_name} does not exist")
 
     def add_column_to_table(self, new_column_description: dict) -> None:
+        """takes in dictionary of new column description as sql query and adds it to existing table
+        for instance
+        args:
+        - new_column_description:
+
+        example:
+        new_column_description: {"first_name": "VARCHAR(255)"}"""
         try:
             with self._get_cursor() as cursor:
                 for column_name, column_description in new_column_description.items():
@@ -101,17 +108,17 @@ class BaseManager(BaseConnectorManager):
 
     def update_with_condition(self, new_data_for_update: dict, conditions_to_meet: dict):
         """
-        Update rows based on the provided conditions.
+        update rows based on the provided conditions.
 
-        Args:
-        - `new_data`: Dict of the column-value pairs to be updated.
+        args:
+        - `new_data_for_update`: Dict of the column-value pairs to be updated.
         - `conditions_to_meet`: Dict of conditions that rows must meet to be updated.
 
-        Example:
+        example:
         conditions_to_meet = {"column1": value1, "column2": value2}
         new_data = {"column3": new_value}
 
-        Update rows where column1 equals value1 and column2 equals value2,
+        update rows where column1 equals value1 and column2 equals value2,
         set column3 to new_value.
         """
         set_values = ", ".join([f"{key} = %s" for key in new_data_for_update.keys()])
@@ -152,7 +159,7 @@ class BaseManager(BaseConnectorManager):
         df = self._get_data_for_export()
         # export the current dataframe to csv file
         df.to_csv(path_to_csv_file, index=False)
-        logger.info(f"Data exported to {path_to_csv_file} successfully.")
+        logger.info(f"data successfully exported to {path_to_csv_file}")
 
     def export_data_as_json(self, path_to_json_file):
         """
@@ -168,6 +175,17 @@ class BaseManager(BaseConnectorManager):
 
     ################################### pattern matching section ####################################
     def select_columns_starting_with_pattern(self, patterns: dict) -> dict[tuple]:
+        """
+        select all data where the given pattern is matched
+
+        args:
+        patterns: dictionary of column value matching
+
+        example:
+        patterns = {"first_name": "da"}
+
+        returns: dictionary of tuples where the first name starts with "da"
+        """
         try:
 
             conditions = " AND ".join([f"{column} LIKE '{pattern}%'" for column, pattern in patterns.items()])
@@ -178,6 +196,17 @@ class BaseManager(BaseConnectorManager):
             logger.error(f"can't perform select on non-existing columns: {patterns.keys()}")
 
     def select_columns_ending_with_pattern(self, patterns: dict) -> dict[tuple]:
+        """
+        select all data where the given pattern is matched
+
+        args:
+        patterns: dictionary of column value matching
+
+        example:
+        patterns = {"first_name": "da"}
+
+        returns: dictionary of tuples where the first name ends with "da"
+        """
         try:
             conditions = " AND ".join([f"{column} LIKE '%{pattern}'" for column, pattern in patterns.items()])
             query = f"SELECT * FROM {self.table_name} WHERE {conditions}"
@@ -187,6 +216,17 @@ class BaseManager(BaseConnectorManager):
             logger.error(f"can't perform select on non-existing columns: {patterns.keys()}")
 
     def select_columns_containing_pattern(self, patterns: dict) -> dict[tuple]:
+        """
+        select all data where the given pattern is matched
+
+        args:
+        patterns: dictionary of column value matching
+
+        example:
+        patterns = {"first_name": "da"}
+
+        returns: dictionary of tuples where the first contains "da"
+        """
         try:
             conditions = " AND ".join([f"{column} LIKE '%{pattern}%'" for column, pattern in patterns.items()])
             query = f"SELECT * FROM {self.table_name} WHERE {conditions}"

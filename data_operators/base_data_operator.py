@@ -1,6 +1,7 @@
 from abc import ABC, abstractmethod
 from utils.helpers import parse_file_path, get_metadata
 from data_operators.base_file_info_validation import BaseFileInfo
+import os
 
 
 class BaseDataOperator(ABC):
@@ -36,7 +37,7 @@ class BaseDataOperator(ABC):
                 row_data[key] = value
 
     def add_new_column(self, column_name: str, default_value=None) -> None:
-        """ddd a new column to all existing data with the specified default value"""
+        """add a new column to all existing data with the specified default value"""
         for row_data in self.data.values():
             row_data[column_name] = default_value
 
@@ -63,7 +64,8 @@ class BaseDataOperator(ABC):
 
         will be called after the initial creation of the file"""
         _, file_name, file_extension = parse_file_path(self.file_path)
-        file_info = get_metadata(self.file_path)
+        absolute_file_path = os.path.abspath(self.file_path)
+        file_info = get_metadata(absolute_file_path)
 
         # create BaseFileInfo object
         self.file_metadata = BaseFileInfo(file_name=file_name, file_extension=file_extension, **file_info)

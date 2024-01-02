@@ -1,5 +1,5 @@
 from data_operators.base_data_operator import BaseDataOperator
-from utils.helpers import create_data_file, validate_file_path
+from utils.helpers import create_data_file, validate_file_path, update_date_modified
 from utils.orm_logger import setup_logging
 from utils.constants import BACKUP_FILE_NAME
 import logging
@@ -44,6 +44,7 @@ class CSVDataOperator(BaseDataOperator):
             self._update_file_metadata()  # get headers and types
             # pass
 
+    @update_date_modified
     def commit_to_file(self) -> None:
         try:
             if not self.data:
@@ -56,14 +57,16 @@ class CSVDataOperator(BaseDataOperator):
             with open(self.file_path, 'w', newline='') as csvfile:
                 writer = csv.DictWriter(csvfile, fieldnames=fieldnames)
 
-                # Write header
+                # write header
                 writer.writeheader()
 
-                # Write rows
+                # write rows
                 for row_data in self.data.values():
                     writer.writerow(row_data)
         except IOError as e:
             logger.error(f"error writing to CSV file: {e}")
+        finally:
+            self._update_file_metadata()
 
     def write_data_into_json(self, path_to_json_location):
         """convert data to JSON and save to a JSON file"""

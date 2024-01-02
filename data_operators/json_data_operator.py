@@ -1,5 +1,5 @@
 from data_operators.base_data_operator import BaseDataOperator
-from utils.helpers import create_data_file, validate_file_path
+from utils.helpers import create_data_file, validate_file_path, update_date_modified
 from utils.orm_logger import setup_logging
 from utils.constants import BACKUP_FILE_NAME
 import logging
@@ -34,6 +34,7 @@ class JsonDataOperator(BaseDataOperator):
         finally:
             self._update_file_metadata()
 
+    @update_date_modified
     def commit_to_file(self) -> None:
         """Save modified self.data to the JSON file"""
         try:

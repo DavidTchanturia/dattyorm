@@ -13,7 +13,8 @@ class BaseFileInfo(BaseModel):
     file_name: str
     file_extension: Literal["csv", "json"]
     file_size: float = 0
-    date_created: datetime = Field(default_factory=lambda: datetime.now().strftime('%Y-%m-%d %H:%M:%S'))
+    date_created: datetime = Field(default_factory=datetime.now)
+    date_modified: datetime = Field(default_factory=datetime.now)
     headers_and_types: Dict[str, str] = {}  # if file is not empty, will contain column/types, key/types
 
     @field_validator("file_name")

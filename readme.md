@@ -10,11 +10,6 @@ operation and write table information in CSV or JSON files.
 
 #### setting up
 
-to install the whole package, run the following command
-```
-pip install datty
-```
-
 import all the necessary modules
 
 ```
@@ -266,3 +261,7 @@ data in it.
 # Important Note
 program automatically creates orm_log.txt file when you install it and will log any necessary and important
 errors or info messages.
+
+Future Consideration
+ - add analytical methods 
+ - upload project to PyPi
